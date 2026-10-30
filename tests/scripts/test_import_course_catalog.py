@@ -53,6 +53,22 @@ def test_parse_front_matter_handles_quotes_and_ignores_noise() -> None:
     assert module.parse_front_matter("---\nunterminated: yes\n") == {}
 
 
+def test_bom_prefixed_pages_still_count(tmp_path: Path) -> None:
+    """Some course pages start with a UTF-8 BOM; the importer must read them."""
+    module = _load_module()
+    docs = tmp_path / "placement"
+    docs.mkdir()
+    (docs / "index.md").write_bytes(
+        "\ufeff---\nslug: /placement\ntitle: Placement\n---\n".encode("utf-8")
+    )
+    (docs / "01-basics.md").write_bytes(
+        "\ufeff---\nslug: /placement/01-basics\ntitle: Basics\n---\n".encode("utf-8")
+    )
+    course = module.build_course(docs, BASE)
+    assert (course["id"], course["title"]) == ("placement", "Placement")
+    assert [row["id"] for row in course["chapters"]] == ["01-basics"]
+
+
 def test_page_url_and_chapter_id_are_stable() -> None:
     module = _load_module()
     assert module.page_url(BASE, "/placement") == f"{BASE}/placement/"
@@ -83,6 +99,66 @@ def test_build_course_rejects_a_directory_without_published_pages(tmp_path: Path
     (docs / "PLAN.md").write_text("# draft\n", encoding="utf-8")
     with pytest.raises(SystemExit):
         module.build_course(docs, BASE)
+
+
+def test_build_course_accepts_a_slug_named_landing_page(tmp_path: Path) -> None:
+    module = _load_module()
+    docs = tmp_path / "agent"
+    docs.mkdir()
+    (docs / "00-index.md").write_text(
+        "---\nslug: /agent\ntitle: Agent Course\n---\n", encoding="utf-8"
+    )
+    (docs / "01-phase.md").write_text(
+        "---\nslug: /agent/01-phase\ntitle: Phase One\n---\n", encoding="utf-8"
+    )
+    course = module.build_course(docs, BASE)
+    assert (course["id"], course["title"]) == ("agent", "Agent Course")
+    assert course["url"] == f"{BASE}/agent/"
+    assert [row["id"] for row in course["chapters"]] == ["01-phase"]
+
+
+def test_build_courses_imports_every_course_under_a_parent(tmp_path: Path) -> None:
+    module = _load_module()
+    parent = tmp_path / "courses"
+    parent.mkdir()
+    _write_course(parent)
+    agent = parent / "agent"
+    agent.mkdir()
+    (agent / "00-index.md").write_text(
+        "---\nslug: /agent\ntitle: Agent Course\n---\n", encoding="utf-8"
+    )
+    (agent / "01-phase.md").write_text(
+        "---\nslug: /agent/01-phase\ntitle: Phase One\n---\n", encoding="utf-8"
+    )
+    junk = parent / "draft"
+    junk.mkdir()
+    (junk / "PLAN.md").write_text("# draft\n", encoding="utf-8")
+
+    courses, skipped = module.build_courses(parent, BASE)
+    assert [course["id"] for course in courses] == ["agent", "placement"]
+    assert len(skipped) == 1 and "draft" in skipped[0]
+
+
+def test_main_imports_a_parent_in_one_pass(tmp_path: Path, capsys) -> None:
+    module = _load_module()
+    parent = tmp_path / "courses"
+    parent.mkdir()
+    _write_course(parent)
+    agent = parent / "agent"
+    agent.mkdir()
+    (agent / "00-index.md").write_text(
+        "---\nslug: /agent\ntitle: Agent Course\n---\n", encoding="utf-8"
+    )
+    (agent / "01-phase.md").write_text(
+        "---\nslug: /agent/01-phase\ntitle: Phase One\n---\n", encoding="utf-8"
+    )
+    out = tmp_path / "catalog.json"
+
+    assert module.main(["--docs", str(parent), "--base-url", BASE, "--out", str(out)]) == 0
+    catalog = json.loads(out.read_text(encoding="utf-8"))
+    assert [row["id"] for row in catalog["courses"]] == ["agent", "placement"]
+    printed = capsys.readouterr().out
+    assert "2 course(s), 3 chapters imported" in printed
 
 
 def test_merge_catalog_replaces_one_course_and_keeps_the_rest() -> None:

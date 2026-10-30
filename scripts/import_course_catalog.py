@@ -17,8 +17,11 @@ Usage::
         --base-url https://raushan666java.github.io/ai-engineering-journey \\
         --out data/courses/catalog.json
 
-The output is merged by course id, so importing a second course keeps the
-first. ``--dry-run`` prints the summary without writing.
+Point ``--docs`` at a ``courses/`` parent to import every course under it in one
+pass; a child without a landing page (a root page whose slug is the directory
+name) is reported and skipped instead of failing the run. The output is merged
+by course id, so importing a second course keeps the first. ``--dry-run`` prints
+the summary without writing.
 """
 
 from __future__ import annotations
@@ -79,7 +82,7 @@ def chapter_id(relative: Path) -> str:
 
 
 def read_page(path: Path, docs_root: Path, base_url: str) -> dict[str, str] | None:
-    text = path.read_text(encoding="utf-8")
+    text = path.read_text(encoding="utf-8-sig")
     meta = parse_front_matter(text)
     slug = meta.get("slug", "").strip()
     if not slug:
@@ -96,12 +99,24 @@ def read_page(path: Path, docs_root: Path, base_url: str) -> dict[str, str] | No
     }
 
 
+def find_landing(docs_root: Path) -> tuple[Path, dict[str, str]] | None:
+    """The course's landing page: the root page whose slug *is* the directory.
+
+    Docusaurus courses name it ``index.md`` or ``00-index.md``; matching on the
+    slug instead of the filename keeps both working.
+    """
+    for path in sorted(docs_root.glob("*.md")):
+        meta = parse_front_matter(path.read_text(encoding="utf-8-sig"))
+        slug = meta.get("slug", "").strip().strip("/")
+        if slug and slug.rsplit("/", 1)[-1].casefold() == docs_root.name.casefold():
+            return path, meta
+    return None
+
+
 def build_course(docs_root: Path, base_url: str) -> dict[str, Any]:
     """Build one course entry from a Markdown directory."""
-    root_index = docs_root / "index.md"
-    root_meta = (
-        parse_front_matter(root_index.read_text(encoding="utf-8")) if root_index.exists() else {}
-    )
+    landing = find_landing(docs_root)
+    root_meta = landing[1] if landing else {}
     root_slug = root_meta.get("slug", "").strip()
     course_id = root_slug.strip("/").rsplit("/", 1)[-1] if root_slug else docs_root.name
     if not course_id:
@@ -112,7 +127,7 @@ def build_course(docs_root: Path, base_url: str) -> dict[str, Any]:
             chapter
             for path in docs_root.rglob("*.md")
             for chapter in [read_page(path, docs_root, base_url)]
-            if chapter is not None
+            if chapter is not None and path != (landing[0] if landing else None)
         ),
         key=lambda chapter: chapter["id"],
     )
@@ -134,6 +149,23 @@ def build_course(docs_root: Path, base_url: str) -> dict[str, Any]:
         "chapters": chapters,
     }
     return course
+
+
+def build_courses(docs_root: Path, base_url: str) -> tuple[list[dict[str, Any]], list[str]]:
+    """Build one course, or every course under a ``courses/`` parent."""
+    if find_landing(docs_root):
+        return [build_course(docs_root, base_url)], []
+    courses: list[dict[str, Any]] = []
+    skipped: list[str] = []
+    for child in sorted(path for path in docs_root.iterdir() if path.is_dir()):
+        if find_landing(child) is None:
+            skipped.append(f"{child.name} (no landing page with a matching slug)")
+            continue
+        try:
+            courses.append(build_course(child, base_url))
+        except SystemExit as exc:
+            skipped.append(f"{child.name}: {exc}")
+    return courses, skipped
 
 
 def merge_catalog(existing: Any, course: dict[str, Any]) -> dict[str, Any]:
@@ -163,7 +195,10 @@ def main(argv: list[str] | None = None) -> int:
     if not docs_root.is_dir():
         print(f"error: {docs_root} is not a directory", file=sys.stderr)
         return 2
-    course = build_course(docs_root, args.base_url)
+    courses, skipped = build_courses(docs_root, args.base_url)
+    if not courses:
+        print(f"error: no published courses under {docs_root}", file=sys.stderr)
+        return 2
     out = Path(args.out)
     existing: Any = None
     if out.exists():
@@ -172,11 +207,14 @@ def main(argv: list[str] | None = None) -> int:
         except json.JSONDecodeError as exc:
             print(f"error: {out} is not valid JSON: {exc.msg}", file=sys.stderr)
             return 2
-    catalog = merge_catalog(existing, course)
-    print(
-        f"{course['id']}: {len(course['chapters'])} chapters "
-        f"({len(catalog['courses'])} course(s) in catalog)"
-    )
+    catalog = existing
+    for course in courses:
+        catalog = merge_catalog(catalog, course)
+    chapters = sum(len(course["chapters"]) for course in courses)
+    print(f"{len(courses)} course(s), {chapters} chapters imported")
+    print(f"catalog: {len(catalog['courses'])} course(s)")
+    for name in skipped:
+        print(f"skipped: {name}")
     if args.dry_run:
         return 0
     out.parent.mkdir(parents=True, exist_ok=True)

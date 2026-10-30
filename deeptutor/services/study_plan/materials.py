@@ -49,9 +49,10 @@ KIND_LABELS: dict[str, str] = {
 }
 
 MAX_MATERIALS_PER_KIND = 50
-# A course catalog is browsed with the picker's filter, so one 390-chapter
-# course is a normal list rather than noise. Every other kind stays small.
-KIND_LIMITS: dict[str, int] = {"course": 500}
+# A course catalog is browsed with the picker's filter, so a whole curriculum
+# (60 courses, ~1,400 chapters) is a normal list rather than noise. Every other
+# kind stays small.
+KIND_LIMITS: dict[str, int] = {"course": 2_000}
 MAX_TITLE_CHARS = 120
 MAX_DETAIL_CHARS = 160
 

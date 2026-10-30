@@ -139,7 +139,7 @@ workspace:
 | `notebook` | `get_notebook_manager().list_notebooks()` | notebook dir exists |
 | `document` | `get_co_writer_storage().list_documents()` | co-writer docs dir exists |
 
-Rows are capped at 50 per kind (500 for `course`, which is browsed with the
+Rows are capped at 50 per kind (2,000 for `course`, which is browsed with the
 picker's filter), titles at 120 characters, details at 160. Courses sort by
 chapter path so the curriculum order survives; every other kind sorts by title.
 `resolve()` returns `(resolved, missing)`; the caller decides how to report the
@@ -172,15 +172,30 @@ fetches a URL, so discovery is offline, deterministic, and has no SSRF surface:
 ```
 
 Build or refresh it from the Markdown sources; only pages with a front-matter
-`slug` are published, so drafts and `PLAN.md` are skipped. The output merges by
-course id, so importing a second course keeps the first:
+`slug` are published, so drafts and `PLAN.md` are skipped. Point `--docs` at a
+single course, or at the `courses/` parent to import every published course in
+one pass. The output merges by course id, so importing a second course keeps the
+first:
 
 ```bash
+# one course
 python scripts/import_course_catalog.py \
   --docs ../ai-engineering-journey/site/docs/courses/ai-engineering-placement \
   --base-url https://raushan666java.github.io/ai-engineering-journey \
   --out data/courses/catalog.json
+
+# every course (59 courses, 1,354 chapters on the reference site)
+python scripts/import_course_catalog.py \
+  --docs ../ai-engineering-journey/site/docs/courses \
+  --base-url https://raushan666java.github.io/ai-engineering-journey \
+  --out data/courses/catalog.json
 ```
+
+A course's landing page is the root page whose slug is the directory name
+(`index.md` or `00-index.md`), so both layouts work; a child directory without
+one is reported as skipped instead of failing the whole import. A page may start
+with a UTF-8 BOM — the importer reads it. In multi-user mode each user imports
+into their own workspace (`--out data/users/<uid>/courses/catalog.json`).
 
 The file lives at `<workspace>/courses/catalog.json` through
 `PathService.get_course_catalog_file()`. Chapter titles, ids, and URLs come from
