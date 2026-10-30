@@ -35,7 +35,17 @@ router = APIRouter()
 Goal = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 DayText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=10, max_length=10)]
 Topic = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
-MaterialKind = Literal["knowledge", "book", "reading", "mastery", "notebook", "document", "custom"]
+MaterialKind = Literal[
+    "knowledge",
+    "book",
+    "reading",
+    "course",
+    "mastery",
+    "practice",
+    "notebook",
+    "document",
+    "custom",
+]
 SessionStatus = Literal["pending", "done", "skipped"]
 
 

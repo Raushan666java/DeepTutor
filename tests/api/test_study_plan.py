@@ -89,6 +89,52 @@ def test_create_plan_resolves_titles_server_side(client: TestClient) -> None:
     assert body["sessions"]
 
 
+COURSE_CHAPTER = StudyMaterial(
+    kind="course",
+    id="ai-agent-engineer/01-what-is-agentic-ai",
+    title="What Is Agentic AI, Really",
+    detail="Course chapter",
+    href=(
+        "https://raushan666java.github.io/ai-engineering-journey"
+        "/ai-agent-engineer/01-what-is-agentic-ai/"
+    ),
+)
+
+
+def test_request_kinds_match_the_material_service() -> None:
+    """A kind the picker offers must not be rejected by the request model."""
+    from typing import get_args
+
+    assert set(get_args(study_plan_router.MaterialKind)) == set(
+        materials_service.MATERIAL_KINDS
+    ) | {"custom"}
+
+
+def test_create_plan_accepts_a_course_chapter(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    service = PathService(workspace_root=tmp_path / "data")
+    monkeypatch.setattr("deeptutor.services.study_plan.store.get_path_service", lambda: service)
+    store = StudyPlanStore()
+    monkeypatch.setattr(study_plan_router, "get_study_plan_store", lambda: store)
+    discovery = MaterialDiscovery(materials=[COURSE_CHAPTER])
+    monkeypatch.setattr(
+        study_plan_router,
+        "resolve",
+        lambda refs: materials_service.resolve(refs, discovery=discovery),
+    )
+    app = FastAPI()
+    app.include_router(study_plan_router.router, prefix="/api/study-plans")
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/study-plans",
+        json=_payload(materials=[{"kind": "course", "id": COURSE_CHAPTER.id}]),
+    )
+    assert response.status_code == 201, response.text
+    assert [(row["kind"], row["title"], row["href"]) for row in response.json()["materials"]] == [
+        ("course", "What Is Agentic AI, Really", COURSE_CHAPTER.href)
+    ]
+
+
 def test_create_plan_rejects_a_vanished_reference(client: TestClient) -> None:
     response = client.post(
         "/api/study-plans", json=_payload(materials=[{"kind": "book", "id": "gone"}])
