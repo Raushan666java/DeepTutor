@@ -149,6 +149,44 @@ def test_no_declaration_is_a_no_op(monkeypatch) -> None:
     assert install_extras.main([""]) == 0
 
 
+def test_legacy_console_encoding_does_not_abort_the_install(monkeypatch) -> None:
+    """A cp1252 console must degrade the status markers, not raise.
+
+    Windows falls back to the active code page when output is redirected. The
+    emoji in these status lines used to raise UnicodeEncodeError before pip was
+    attempted, so a best-effort install failed the whole container start.
+    """
+    calls: list[dict[str, str]] = []
+
+    class LegacyStream:
+        errors = "strict"
+
+        def reconfigure(self, **kwargs):
+            calls.append(kwargs)
+
+    monkeypatch.setattr(install_extras.sys, "stdout", LegacyStream())
+    monkeypatch.setattr(install_extras.sys, "stderr", LegacyStream())
+
+    install_extras._ensure_console_safe()
+
+    assert calls == [{"errors": "replace"}, {"errors": "replace"}]
+
+
+def test_utf8_console_is_left_alone(monkeypatch) -> None:
+    """A stream that already degrades unencodable text is not reconfigured."""
+
+    class Utf8Stream:
+        errors = "replace"
+
+        def reconfigure(self, **kwargs):  # pragma: no cover - must not run
+            raise AssertionError("already-safe stream was reconfigured")
+
+    monkeypatch.setattr(install_extras.sys, "stdout", Utf8Stream())
+    monkeypatch.setattr(install_extras.sys, "stderr", Utf8Stream())
+
+    install_extras._ensure_console_safe()
+
+
 def test_every_extra_the_project_declares_resolves() -> None:
     """Guards the docs: the names suggested in docker-compose must be real."""
     root = Path(__file__).resolve().parents[2]

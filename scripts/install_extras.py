@@ -33,6 +33,24 @@ import tomllib
 _SPLIT_RE = re.compile(r"[,\s]+")
 
 
+def _ensure_console_safe() -> None:
+    """Keep the status lines below from crashing a legacy Windows console.
+
+    When stdout is redirected, Windows Python falls back to the active code
+    page (often cp1252), which cannot encode the status markers used here. A
+    best-effort install must never fail just because it cannot draw an emoji,
+    so degrade unencodable characters instead of raising UnicodeEncodeError.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None or getattr(stream, "errors", None) == "replace":
+            continue
+        try:
+            reconfigure(errors="replace")
+        except (OSError, ValueError):
+            pass
+
+
 def parse_names(raw: str) -> list[str]:
     """Split a declaration into names, de-duplicated and order-preserving."""
     seen: dict[str, None] = {}
@@ -106,6 +124,7 @@ def resolve(extras: dict[str, list[str]], names: list[str]) -> tuple[list[str], 
 
 
 def main(argv: list[str] | None = None) -> int:
+    _ensure_console_safe()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("names", nargs="?", default="", help="extras, comma- or space-separated")
     parser.add_argument("--pyproject", default="pyproject.toml", type=Path)

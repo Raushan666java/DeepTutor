@@ -72,7 +72,10 @@ try {
       if (error.code !== "ENOENT") throw error;
     }
 
-    if (current === generated) continue;
+    // Git checks `.ts` out with the platform line ending when core.autocrlf is
+    // on, while Prettier always emits LF. Compare normalized text so a clean
+    // Windows checkout is not reported as a stale generated contract.
+    if (current !== null && current.replace(/\r\n/g, "\n") === generated) continue;
     hasDrift = true;
     if (check) {
       console.error(`Generated contract is stale: contracts/generated/${output.name}`);
