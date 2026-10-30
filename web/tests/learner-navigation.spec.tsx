@@ -10,7 +10,7 @@ beforeEach(() => vi.mocked(fetchAuthStatus).mockReset());
 it.each([
   [["reading"], ["/learning"]],
   [["books"], ["/learning"]],
-  [["chat"], ["/chat", "/learning", "/calendar", "/kanban"]],
+  [["chat"], ["/chat", "/learning", "/calendar", "/study-plan", "/kanban"]],
   [[], []],
 ] as [string[], string[]][])("filters the actual nav entries for %j", (allowed, expected) => {
   expect(PRIMARY_NAV_HREFS.filter((href) => navVisibleUnderPolicy(href, allowed))).toEqual(expected);

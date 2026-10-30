@@ -320,6 +320,13 @@ class PathService:
     def get_learning_journal_file(self) -> Path:
         return self.get_learning_journal_dir() / "journal.json"
 
+    def get_study_plan_dir(self) -> Path:
+        """Dated study plans; workspace data, separate from the soft journal."""
+        return self.workspace_root / "study_plan"
+
+    def get_study_plan_file(self) -> Path:
+        return self.get_study_plan_dir() / "plans.json"
+
     def migrate_legacy_memory_markdown(self) -> bool:
         """Move the old workspace memory files into the canonical memory root once.
 

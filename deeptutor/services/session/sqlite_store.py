@@ -4360,6 +4360,20 @@ class SQLiteSessionStore:
             None if session_ids is None else tuple(session_ids),
         )
 
+    def list_question_bank_materials_sync(
+        self,
+        session_ids: Sequence[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Synchronous variant for callers that are not on the event loop.
+
+        Study-plan discovery runs inside a synchronous FastAPI route (a worker
+        thread) and inside async tools; both need the same rows without
+        spawning or borrowing a loop.
+        """
+        return self._list_question_bank_materials_sync(
+            None if session_ids is None else tuple(session_ids)
+        )
+
     def _get_notebook_entry_sync(self, entry_id: int) -> dict[str, Any] | None:
         with self._connect() as conn:
             row = conn.execute(

@@ -28,6 +28,10 @@ class MasteryPathRequestConfig(EmptyConfig):
     pass
 
 
+class StudyPlanRequestConfig(EmptyConfig):
+    pass
+
+
 class ImmersiveReadingRequestConfig(EmptyConfig):
     pass
 
@@ -212,6 +216,7 @@ __all__ = [
     "DeepSolveRequestConfig",
     "ImmersiveReadingRequestConfig",
     "MasteryPathRequestConfig",
+    "StudyPlanRequestConfig",
     "VideoLessonRequestConfig",
     "VisualizeRequestConfig",
     "build_request_schema",

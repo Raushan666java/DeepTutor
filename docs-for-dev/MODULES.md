@@ -103,6 +103,7 @@ own distribution. The builder rejects overlapping wheel files.
 | knowledge / parsing | Retrieval and ingestion / document parsing implementations |
 | reading / mastery / books | Reading and watching / guided learning / book application |
 | memory / notebook / co-writer / calendar | Optional application services and their routes |
+| study-plan | Dated study sessions over the learner's own materials and notes |
 | partners / providers | Companion runtime and channel SDKs / optional model-provider SDKs |
 | parser-* | Additional parser dependency distributions, requiring parsing |
 

@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "id": "study-plan",
+  "distribution": "deeptutor-study-plan",
+  "requires": [],
+  "optional": [
+    "calendar",
+    "mastery",
+    "questions"
+  ],
+  "paths": [
+    "deeptutor/capabilities/study_plan",
+    "deeptutor/services/study_plan",
+    "deeptutor/api/routers/study_plan.py"
+  ],
+  "capabilities": {
+    "study_plan": {
+      "class_path": "deeptutor.capabilities.study_plan.capability:StudyPlanCapability",
+      "config_model": "deeptutor.runtime.request_contracts:StudyPlanRequestConfig",
+      "manifest": {
+        "name": "study_plan",
+        "description": "Dated study planning: a goal plus a deadline becomes a deterministic, markable multi-week schedule.",
+        "stages": [
+          "responding"
+        ],
+        "tools_used": [
+          "study_plan_materials",
+          "study_plan_status",
+          "study_plan_create",
+          "study_plan_mark"
+        ],
+        "cli_aliases": [
+          "plan"
+        ]
+      },
+      "order": 11
+    }
+  },
+  "loops": {
+    "study_plan": {
+      "class_path": "deeptutor.capabilities.study_plan.loop:StudyPlanLoopCapability"
+    }
+  },
+  "tools": {
+    "study_plan_materials": {
+      "class_path": "deeptutor.capabilities.study_plan.tools:StudyPlanMaterialsTool",
+      "order": 102
+    },
+    "study_plan_status": {
+      "class_path": "deeptutor.capabilities.study_plan.tools:StudyPlanStatusTool",
+      "order": 103
+    },
+    "study_plan_create": {
+      "class_path": "deeptutor.capabilities.study_plan.tools:StudyPlanCreateTool",
+      "order": 104
+    },
+    "study_plan_mark": {
+      "class_path": "deeptutor.capabilities.study_plan.tools:StudyPlanMarkTool",
+      "order": 105
+    }
+  },
+  "routes": [
+    {
+      "reference": "deeptutor.api.routers.study_plan:router",
+      "options": {
+        "prefix": "/api/study-plans",
+        "tags": [
+          "study-plan"
+        ]
+      },
+      "auth": "learning",
+      "order": 645
+    }
+  ],
+  "commands": [],
+  "navigation": [
+    "/study-plan"
+  ],
+  "services": [],
+  "requirements": [],
+  "executables": []
+}

@@ -15,6 +15,7 @@
 -r modules/research.txt
 -r modules/server.txt
 -r modules/solve.txt
+-r modules/study-plan.txt
 -r modules/video-lesson.txt
 -r modules/visualize.txt
 -r modules/web.txt
