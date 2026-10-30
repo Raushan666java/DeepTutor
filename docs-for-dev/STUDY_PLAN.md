@@ -7,8 +7,9 @@ scores whether a learner may advance through a curriculum; a study plan decides
 **when** they sit down. It takes a goal, a deadline, and the hours a learner can
 actually commit, and lays out dated sessions that can be marked done or skipped.
 The plan can point at the learner's real materials — books, mastery paths,
-reading collections, knowledge bases, practice banks, notebooks, and Co-Writer
-documents — so a session is not just a free-text goal.
+reading collections, course chapters, knowledge bases, practice banks,
+notebooks, and Co-Writer documents — so a session is not just a free-text
+goal.
 
 The scheduler is deterministic. The model owns the conversation and supplies
 parameters; `deeptutor/services/study_plan/scheduler.py` decides every date.
@@ -23,6 +24,8 @@ without a clock, a database, or an LLM.
 | Date arithmetic | `deeptutor/services/study_plan/scheduler.py` |
 | Atomic JSON store | `deeptutor/services/study_plan/store.py` |
 | Material discovery and resolution | `deeptutor/services/study_plan/materials.py` |
+| Course catalog reader | `deeptutor/services/study_plan/courses.py` |
+| Course catalog importer | `scripts/import_course_catalog.py` |
 | Turn capability and prompt policy | `deeptutor/capabilities/study_plan/` |
 | REST adapter | `deeptutor/api/routers/study_plan.py` |
 | Module contract | `deeptutor/modules/manifests/study-plan.json` |
@@ -46,6 +49,7 @@ A plan stores `goal`, `start_date`, `deadline`, `weekly_hours`,
 | `knowledge` | Knowledge-base name | `/knowledge-bases/{name}` |
 | `book` | Book id | `/learning/books/{id}` |
 | `reading` | Immersive Reading workspace id | `/learning/reading/{id}` |
+| `course` | `course_id/chapter_path` from the imported catalog | the published page (absolute URL) |
 | `mastery` | Mastery-path topic id | `/learning/mastery/{id}` |
 | `practice` | `source:material_id` from the review history | `/learning/practice?view=bank` |
 | `notebook` | Notebook id | `/notebooks/{id}` |
@@ -129,14 +133,59 @@ workspace:
 | `knowledge` | `current_kb_manager().list_knowledge_bases()` | `current_kb_base_dir().exists()` |
 | `book` | `get_book_storage().list_book_ids()` then `load_book()` | storage self-guards |
 | `reading` | `ReadingCatalogStore().list_workspaces(limit=…)` | `workspace/reading` exists |
+| `course` | `courses.load_catalog()` | `courses/catalog.json` exists |
 | `mastery` | `learning.navigation.topic_cards(query=…)` | `workspace/learning` exists |
 | `practice` | `store.list_question_bank_materials_sync()` | `chat_history.db` exists |
 | `notebook` | `get_notebook_manager().list_notebooks()` | notebook dir exists |
 | `document` | `get_co_writer_storage().list_documents()` | co-writer docs dir exists |
 
-Rows are capped at 50 per kind, titles at 120 characters, details at 160.
+Rows are capped at 50 per kind (500 for `course`, which is browsed with the
+picker's filter), titles at 120 characters, details at 160. Courses sort by
+chapter path so the curriculum order survives; every other kind sorts by title.
 `resolve()` returns `(resolved, missing)`; the caller decides how to report the
 missing refs.
+
+## Course catalogs
+
+A `course` material is a chapter of a site the learner already publishes, such
+as a Docusaurus course. The catalog is a local JSON index — no request ever
+fetches a URL, so discovery is offline, deterministic, and has no SSRF surface:
+
+```json
+{
+  "version": 1,
+  "courses": [
+    {
+      "id": "ai-engineering-placement",
+      "title": "Backend + AI Engineer — Complete Placement Course",
+      "url": "https://example.github.io/repo/ai-engineering-placement/",
+      "chapters": [
+        {
+          "id": "01-python-programming/03-strings-and-formatting",
+          "title": "Strings & Formatting",
+          "url": "https://example.github.io/repo/ai-engineering-placement/01-python-programming/03-strings-and-formatting/"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Build or refresh it from the Markdown sources; only pages with a front-matter
+`slug` are published, so drafts and `PLAN.md` are skipped. The output merges by
+course id, so importing a second course keeps the first:
+
+```bash
+python scripts/import_course_catalog.py \
+  --docs ../ai-engineering-journey/site/docs/courses/ai-engineering-placement \
+  --base-url https://raushan666java.github.io/ai-engineering-journey \
+  --out data/courses/catalog.json
+```
+
+The file lives at `<workspace>/courses/catalog.json` through
+`PathService.get_course_catalog_file()`. Chapter titles, ids, and URLs come from
+the catalog; a malformed catalog marks the kind `unavailable` instead of
+returning a half-list, and a missing file simply means no course was imported.
 
 ## REST API
 

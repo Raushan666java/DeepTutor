@@ -57,7 +57,8 @@ installation before deciding to reinstall it.
   authorization.
 - [Practice](PRACTICE.md): question imports, review records and scheduling.
 - [Study plans](STUDY_PLAN.md): deterministic dated sessions over the learner's
-  own books, paths, collections, practice banks, notebooks and documents.
+  own books, paths, collections, course chapters, practice banks, notebooks and
+  documents.
 - [Video learning](watching-workspace.md) and [voice](VOICE_CONFIGURATION.md):
   Reading media migration, captions, speech adapters and verification.
 - [Answer-quality diagnosis](REASONING_SAFETY_CHECKLIST.md): reproducible

@@ -29,6 +29,7 @@ MATERIAL_KINDS: tuple[str, ...] = (
     "knowledge",
     "book",
     "reading",
+    "course",
     "mastery",
     "practice",
     "notebook",
@@ -39,6 +40,7 @@ KIND_LABELS: dict[str, str] = {
     "knowledge": "Knowledge base",
     "book": "Book",
     "reading": "Reading collection",
+    "course": "Course chapter",
     "mastery": "Mastery path",
     "practice": "Practice bank",
     "notebook": "Notebook",
@@ -47,6 +49,9 @@ KIND_LABELS: dict[str, str] = {
 }
 
 MAX_MATERIALS_PER_KIND = 50
+# A course catalog is browsed with the picker's filter, so one 390-chapter
+# course is a normal list rather than noise. Every other kind stays small.
+KIND_LIMITS: dict[str, int] = {"course": 500}
 MAX_TITLE_CHARS = 120
 MAX_DETAIL_CHARS = 160
 
@@ -152,6 +157,30 @@ def _reading_collections(query: str) -> list[StudyMaterial]:
         )
         if item is not None:
             items.append(item)
+    return items
+
+
+def _course_chapters(query: str) -> list[StudyMaterial]:
+    from deeptutor.services.study_plan.courses import load_catalog
+
+    # Missing catalog means the learner never imported a course; an unreadable
+    # one raises so the picker can report *why* the kind is unavailable.
+    courses = load_catalog(get_path_service().get_course_catalog_file())
+    needle = query.casefold()
+    items: list[StudyMaterial] = []
+    for course in courses:
+        for chapter in course.chapters:
+            if needle and needle not in f"{chapter.title} {course.title}".casefold():
+                continue
+            item = _material(
+                "course",
+                f"{course.id}/{chapter.id}",
+                chapter.title,
+                course.title,
+                chapter.url,
+            )
+            if item is not None:
+                items.append(item)
     return items
 
 
@@ -263,6 +292,7 @@ _PROVIDERS: dict[str, Callable[[str], list[StudyMaterial]]] = {
     "knowledge": _knowledge_bases,
     "book": _books,
     "reading": _reading_collections,
+    "course": _course_chapters,
     "mastery": _mastery_paths,
     "practice": _practice_banks,
     "notebook": _notebooks,
@@ -311,11 +341,22 @@ def discover(
         except Exception as exc:  # a disabled or broken feature must not block the rest
             discovery.unavailable.append({"kind": kind, "reason": _reason(exc)})
             continue
-        discovery.materials.extend(rows[:MAX_MATERIALS_PER_KIND])
-    discovery.materials.sort(
-        key=lambda item: (MATERIAL_KINDS.index(item.kind), item.title.casefold())
-    )
+        discovery.materials.extend(rows[: KIND_LIMITS.get(kind, MAX_MATERIALS_PER_KIND)])
+    discovery.materials.sort(key=_sort_key)
     return discovery
+
+
+def _sort_key(item: StudyMaterial) -> tuple[int, str, str]:
+    """Curriculum order for courses, alphabetical elsewhere.
+
+    A course's chapter ids are its path on disk (``00-core/01-networks``), so
+    sorting by id keeps the learner's own reading order instead of shuffling
+    "Chapter 10" before "Chapter 2".
+    """
+    position = MATERIAL_KINDS.index(item.kind)
+    if item.kind == "course":
+        return (position, item.id.casefold(), item.title.casefold())
+    return (position, item.title.casefold(), "")
 
 
 def resolve(

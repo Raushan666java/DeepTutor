@@ -327,6 +327,10 @@ class PathService:
     def get_study_plan_file(self) -> Path:
         return self.get_study_plan_dir() / "plans.json"
 
+    def get_course_catalog_file(self) -> Path:
+        """Read-only course index written by ``scripts/import_course_catalog.py``."""
+        return self.workspace_root / "courses" / "catalog.json"
+
     def migrate_legacy_memory_markdown(self) -> bool:
         """Move the old workspace memory files into the canonical memory root once.
 

@@ -130,9 +130,10 @@ class StudyPlanMaterialsTool(BaseTool):
             name="study_plan_materials",
             description=(
                 "List the study materials a plan can schedule: knowledge bases, "
-                "books, reading collections, mastery paths, notebooks, and "
-                "Co-Writer documents. Call this before creating a plan from the "
-                "learner's own content. Each row reports the reference to pass in "
+                "books, reading collections, course chapters, mastery paths, "
+                "practice banks, notebooks, and Co-Writer documents. Call this "
+                "before creating a plan from the learner's own content. Each row "
+                "reports the reference to pass in "
                 "study_plan_create.materials, e.g. 'book:book_abc'. A kind that is "
                 "unavailable on this install is reported, not fatal."
             ),
@@ -148,7 +149,7 @@ class StudyPlanMaterialsTool(BaseTool):
                     type="string",
                     description=(
                         "Optional single kind: knowledge | book | reading | "
-                        "mastery | practice | notebook | document."
+                        "course | mastery | practice | notebook | document."
                     ),
                     required=False,
                 ),

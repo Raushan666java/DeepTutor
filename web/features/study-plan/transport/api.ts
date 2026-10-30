@@ -14,6 +14,7 @@ export type MaterialKind =
   | 'knowledge'
   | 'book'
   | 'reading'
+  | 'course'
   | 'mastery'
   | 'practice'
   | 'notebook'

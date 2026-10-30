@@ -321,7 +321,11 @@ export default function StudyPlanPage() {
                     <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
                       {group.label}
                     </p>
-                    <div className="grid gap-2 sm:grid-cols-2">
+                    <div
+                      className={`grid gap-2 sm:grid-cols-2 ${
+                        group.rows.length > 12 ? 'max-h-72 overflow-y-auto pr-1' : ''
+                      }`}
+                    >
                       {group.rows.map((row) => {
                         const key = `${row.kind}:${row.id}`
                         return (
@@ -544,24 +548,33 @@ function PlanCard({
 
       {plan.materials.length ? (
         <ul className="flex flex-wrap gap-2">
-          {plan.materials.map((material, index) => (
-            <li key={`${material.kind}:${material.id}:${index}`}>
-              {material.href ? (
-                <Link
-                  href={scopedUrl(material.href)}
-                  className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-3 py-1 text-xs hover:bg-[var(--muted)]"
-                >
-                  <span className="text-[var(--muted-foreground)]">{material.kind}</span>
-                  {material.title}
-                </Link>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-3 py-1 text-xs">
-                  <span className="text-[var(--muted-foreground)]">{material.kind}</span>
-                  {material.title}
-                </span>
-              )}
-            </li>
-          ))}
+          {plan.materials.map((material, index) => {
+            const external = /^https?:\/\//i.test(material.href)
+            const chip =
+              'inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-3 py-1 text-xs hover:bg-[var(--muted)]'
+            const body = (
+              <>
+                <span className="text-[var(--muted-foreground)]">{material.kind}</span>
+                {material.title}
+              </>
+            )
+            return (
+              <li key={`${material.kind}:${material.id}:${index}`}>
+                {!material.href ? (
+                  <span className={chip}>{body}</span>
+                ) : external ? (
+                  // A course chapter lives on the learner's published site.
+                  <a className={chip} href={material.href} target="_blank" rel="noreferrer">
+                    {body}
+                  </a>
+                ) : (
+                  <Link className={chip} href={scopedUrl(material.href)}>
+                    {body}
+                  </Link>
+                )}
+              </li>
+            )
+          })}
         </ul>
       ) : null}
 
